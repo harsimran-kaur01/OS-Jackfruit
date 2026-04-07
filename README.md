@@ -1,5 +1,10 @@
 # 🧩 Container Runtime Design – Systems Analysis
 
+## 👩‍💻 Authors
+- Harsimran Kaur — PES1UG24CS187
+- Gitanjali A — PES1UG24CS170  
+
+  
 ## 1. Isolation Mechanisms
 
 Our runtime achieves isolation primarily using Linux namespaces and filesystem root switching.
