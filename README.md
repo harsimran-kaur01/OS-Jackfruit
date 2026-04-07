@@ -1,111 +1,237 @@
-# Multi-Container Runtime
+# 🧩 Container Runtime Design – Systems Analysis
 
-A lightweight Linux container runtime in C with a long-running supervisor and a kernel-space memory monitor.
+## 1. Isolation Mechanisms
 
-Read [`project-guide.md`](project-guide.md) for the full project specification.
+Our runtime achieves isolation primarily using Linux namespaces and filesystem root switching.
 
----
+### 🔒 Process Isolation (PID Namespace)
+- A PID namespace ensures that processes inside the container have their own PID numbering  
+- The container’s init process appears as PID 1 inside the namespace  
+- Processes outside the namespace cannot directly see or interact with container processes  
 
-## Getting Started
+### 🖥️ System Identity Isolation (UTS Namespace)
+- The UTS namespace isolates hostname and domain name  
+- Each container can have its own hostname without affecting the host  
 
-### 1. Fork the Repository
+### 📁 Filesystem Isolation (Mount Namespace + chroot/pivot_root)
+- A mount namespace provides a separate view of the filesystem hierarchy  
+- Changes to mounts inside the container do not affect the host  
 
-1. Go to [github.com/shivangjhalani/OS-Jackfruit](https://github.com/shivangjhalani/OS-Jackfruit)
-2. Click **Fork** (top-right)
-3. Clone your fork:
+#### chroot vs pivot_root
 
-```bash
-git clone https://github.com/<your-username>/OS-Jackfruit.git
-cd OS-Jackfruit
-```
+**chroot:**
+- Changes the apparent root directory for a process  
+- Does not fully isolate mount points; escape is possible in some cases  
 
-### 2. Set Up Your VM
+**pivot_root:**
+- Swaps the current root filesystem with a new one  
+- More robust for containers; used in real runtimes  
 
-You need an **Ubuntu 22.04 or 24.04** VM with **Secure Boot OFF**. WSL will not work.
+### ⚠️ What the Kernel Still Shares
+Even with namespaces:
+- Kernel is shared across all containers  
+- Shared resources include:
+  - CPU scheduler  
+  - Memory management subsystem  
+  - Kernel modules  
+  - Network stack (unless network namespaces are used)  
 
-Install dependencies:
-
-```bash
-sudo apt update
-sudo apt install -y build-essential linux-headers-$(uname -r)
-```
-
-### 3. Run the Environment Check
-
-```bash
-cd boilerplate
-chmod +x environment-check.sh
-sudo ./environment-check.sh
-```
-
-Fix any issues reported before moving on.
-
-### 4. Prepare the Root Filesystem
-
-```bash
-mkdir rootfs-base
-wget https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
-tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-base
-
-# Make one writable copy per container you plan to run
-cp -a ./rootfs-base ./rootfs-alpha
-cp -a ./rootfs-base ./rootfs-beta
-```
-
-Do not commit `rootfs-base/` or `rootfs-*` directories to your repository.
-
-### 5. Understand the Boilerplate
-
-The `boilerplate/` folder contains starter files:
-
-| File                   | Purpose                                             |
-| ---------------------- | --------------------------------------------------- |
-| `engine.c`             | User-space runtime and supervisor skeleton          |
-| `monitor.c`            | Kernel module skeleton                              |
-| `monitor_ioctl.h`      | Shared ioctl command definitions                    |
-| `Makefile`             | Build targets for both user-space and kernel module |
-| `cpu_hog.c`            | CPU-bound test workload                             |
-| `io_pulse.c`           | I/O-bound test workload                             |
-| `memory_hog.c`         | Memory-consuming test workload                      |
-| `environment-check.sh` | VM environment preflight check                      |
-
-Use these as your starting point. You are free to restructure the repository however you want — the submission requirements are listed in the project guide.
-
-### 6. Build and Verify
-
-```bash
-cd boilerplate
-make
-```
-
-If this compiles without errors, your environment is ready.
-
-### 7. GitHub Actions Smoke Check
-
-Your fork will inherit a minimal GitHub Actions workflow from this repository.
-
-That workflow only performs CI-safe checks:
-
-- `make -C boilerplate ci`
-- user-space binary compilation (`engine`, `memory_hog`, `cpu_hog`, `io_pulse`)
-- `./boilerplate/engine` with no arguments must print usage and exit with a non-zero status
-
-The CI-safe build command is:
-
-```bash
-make -C boilerplate ci
-```
-
-This smoke check does not test kernel-module loading, supervisor runtime behavior, or container execution.
+👉 This is why containers are lightweight but less isolated than full virtual machines.
 
 ---
 
-## What to Do Next
+## 2. Supervisor and Process Lifecycle
 
-Read [`project-guide.md`](project-guide.md) end to end. It contains:
+A long-running parent supervisor process plays a critical role in managing containers.
 
-- The six implementation tasks (multi-container runtime, CLI, logging, kernel monitor, scheduling experiments, cleanup)
-- The engineering analysis you must write
-- The exact submission requirements, including what your `README.md` must contain (screenshots, analysis, design decisions)
+### 👨‍👩‍👧 Process Hierarchy
+- The supervisor acts as the parent process for all containers  
+- Containers are created using `fork()` / `clone()`  
 
-Your fork's `README.md` should be replaced with your own project documentation as described in the submission package section of the project guide. (As in get rid of all the above content and replace with your README.md)
+### 🔁 Lifecycle Management
+Creation → Execution → Monitoring → Cleanup  
+
+### 🧹 Process Reaping
+- When a child exits, it becomes a zombie until reaped  
+- The supervisor calls `wait()` / `waitpid()` to:
+  - Collect exit status  
+  - Prevent zombie accumulation  
+
+### 📊 Metadata Tracking
+The supervisor maintains:
+- Container PID  
+- Status (running/stopped)  
+- Resource usage  
+- Logs  
+
+### 📡 Signal Handling
+- Signals like `SIGTERM`, `SIGKILL` are forwarded from supervisor to container  
+- Ensures controlled shutdown  
+
+### ✅ Why Supervisor is Important
+- Central control point  
+- Prevents orphan/zombie processes  
+- Enables clean lifecycle transitions  
+- Allows monitoring and logging  
+
+---
+
+## 3. IPC, Threads, and Synchronization
+
+Our system uses multiple IPC mechanisms and a bounded-buffer logging system.
+
+### 🔗 IPC Mechanisms Used
+**Pipes**
+- For parent-child communication  
+- Simple, unidirectional data flow  
+
+**Shared Memory**
+- Fast communication between threads/processes  
+- Used for logging buffer  
+
+---
+
+### 📦 Bounded Buffer Logging Design
+We use a producer-consumer model:
+- Producers: container processes generating logs  
+- Consumer: logging thread writing to file/stdout  
+
+---
+
+### ⚠️ Race Conditions
+
+**Shared Data Structures:**
+- Log buffer (queue)  
+- Read/write indices  
+- Buffer count  
+
+**Possible Issues:**
+- Two producers writing simultaneously → data corruption  
+- Consumer reading while producer writes → inconsistent data  
+- Buffer overflow/underflow  
+
+---
+
+### 🔐 Synchronization Choices
+
+| Problem | Solution | Why |
+|--------|---------|-----|
+| Mutual exclusion | Mutex | Ensures only one thread accesses buffer at a time |
+| Buffer full/empty | Condition Variables | Efficient waiting (no busy-waiting) |
+| Producer-consumer coordination | Semaphore (optional) | Tracks available slots/items |
+
+### Why not spinlocks?
+- Waste CPU cycles under contention  
+- Not ideal for user-space blocking workloads  
+
+### ✅ Final Design
+- Mutex → protects critical section  
+- Condition variables → handle waiting efficiently  
+
+---
+
+## 4. Memory Management and Enforcement
+
+### 📊 What RSS Measures
+**RSS (Resident Set Size):**
+- Physical memory currently used by a process  
+
+**Includes:**
+- Code  
+- Stack  
+- Heap  
+
+**Excludes:**
+- Swapped-out pages  
+- Shared pages (may be partially counted)  
+
+---
+
+### ❗ What RSS Does NOT Measure
+- Total virtual memory  
+- Memory mapped but unused regions  
+- Disk-backed swapped memory  
+
+---
+
+### ⚖️ Soft vs Hard Limits
+
+| Type | Behavior |
+|------|----------|
+| Soft Limit | Advisory; can be exceeded temporarily |
+| Hard Limit | Strict; exceeding leads to termination |
+
+**Why both?**
+- Soft limits allow flexibility under low contention  
+- Hard limits enforce strict resource control  
+
+---
+
+### 🧠 Why Enforcement Must Be in Kernel Space
+User-space enforcement alone is insufficient because:
+- Processes can ignore limits  
+- No control over actual memory allocation  
+- Cannot intercept low-level allocation (e.g., page faults)  
+
+Kernel-space enforcement:
+- Controls physical memory allocation  
+- Can terminate processes (OOM killer)  
+- Enforces fairness globally  
+
+---
+
+## 5. Scheduling Behavior
+
+Our experiments reveal how Linux scheduling impacts workload behavior.
+
+### ⚙️ Observations
+
+#### 🧮 CPU-bound Workloads
+- Fairly distributed CPU time  
+- Scheduler ensures fairness  
+- Processes get near-equal execution slices  
+
+#### ⏱️ I/O-bound Workloads
+- Higher responsiveness  
+- Tasks frequently yield CPU  
+- Scheduler prioritizes them for better latency  
+
+---
+
+### 🎯 Scheduling Goals
+
+#### 1. Fairness
+- Achieved via Completely Fair Scheduler (CFS)  
+- Each process gets proportional CPU time  
+
+#### 2. Responsiveness
+- I/O-bound tasks prioritized  
+- Lower latency for interactive processes  
+
+#### 3. Throughput
+- CPU utilization remains high  
+- Minimal idle time  
+
+---
+
+### 🔍 Interpretation of Results
+- In mixed workloads:
+  - CPU-bound tasks do not starve others  
+  - I/O-bound tasks complete faster due to frequent scheduling  
+
+- This confirms Linux balances:
+  - Throughput  
+  - Fairness  
+  - Responsiveness  
+
+---
+
+## ✅ Summary
+
+This runtime demonstrates:
+- Strong isolation using namespaces and filesystem techniques  
+- Robust lifecycle management via a supervisor  
+- Safe concurrency using proper synchronization primitives  
+- Kernel-enforced memory control for reliability  
+- Predictable scheduling aligned with Linux design goals
+  
