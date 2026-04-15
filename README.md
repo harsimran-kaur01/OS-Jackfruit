@@ -230,6 +230,91 @@ Our experiments reveal how Linux scheduling impacts workload behavior.
   - Responsiveness  
 
 ---
+# Container Engine – Build, Load, and Run Instructions
+
+## 1. Build the Project
+
+Navigate to the boilerplate directory and compile the project:
+
+```bash
+cd boilerplate
+make
+```
+
+---
+
+## 2. Load Kernel Module
+
+Insert the kernel module and verify the device:
+
+```bash
+sudo insmod monitor.ko
+ls -l /dev/container_monitor
+```
+
+---
+
+## 3. Start Supervisor
+
+Launch the container supervisor using the base root filesystem:
+
+```bash
+sudo ./engine supervisor ./rootfs-base
+```
+
+---
+
+## 4. Prepare Containers
+
+Create container root filesystems by copying the base:
+
+```bash
+cp -a ./rootfs-base ./rootfs-alpha
+cp -a ./rootfs-base ./rootfs-beta
+```
+
+---
+
+## 5. Start Containers
+
+Run containers with specified workloads:
+
+```bash
+sudo ./engine start alpha ./rootfs-alpha /cpu_hog
+sudo ./engine start beta ./rootfs-beta /io_pulse
+```
+
+---
+
+## 6. Inspect Containers
+
+Check running containers and view logs:
+
+```bash
+sudo ./engine ps
+sudo ./engine logs alpha
+```
+
+---
+
+## 7. Stop Containers and Cleanup
+
+Stop containers and remove the kernel module:
+
+```bash
+sudo ./engine stop alpha
+sudo ./engine stop beta
+sudo rmmod monitor
+```
+
+---
+
+## Notes
+
+* Ensure you have root privileges (`sudo`) for all commands interacting with the kernel module and engine.
+* Verify that `monitor.ko` is built successfully before loading.
+* The `/dev/container_monitor` device should exist after inserting the module.
+* Logs can help debug container execution issues.
 
 ## ✅ Summary
 
