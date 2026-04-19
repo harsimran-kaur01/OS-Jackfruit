@@ -1,4 +1,6 @@
+ccflags-y := -Wno-unused-function -Wno-unused-variable
 obj-m += monitor.o
+ccflags-y := -Wno-unused-function -Wno-unused-variable
 
 KDIR := /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
@@ -29,7 +31,7 @@ io_pulse: io_pulse.c
 	gcc -O2 -Wall $(WORKLOAD_LDFLAGS) -o io_pulse io_pulse.c
 
 monitor.ko: monitor.c monitor_ioctl.h
-	$(MAKE) -C $(KDIR) M=$(PWD) modules
+	$(MAKE) -C $(KDIR) M=$(PWD) modules EXTRA_CFLAGS="-Wno-unused-function -Wno-unused-variable"
 
 clean:
 	if [ -d "$(KDIR)" ]; then $(MAKE) -C $(KDIR) M=$(PWD) clean; fi
