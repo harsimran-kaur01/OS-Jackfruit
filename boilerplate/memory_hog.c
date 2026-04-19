@@ -46,25 +46,19 @@ int main(int argc, char *argv[])
     int count = 0;
 
     while (1) {
-     char *mem = malloc(chunk_bytes);
+        char *mem = malloc(chunk_bytes);
         if (!mem) {
             printf("malloc failed after %d allocations\n", count);
-            fflush(stdout);
-            // KEEP PROCESS ALIVE AFTER FAILURE
-            while (1) {
-                sleep(1);
-            }
+            break;
         }
 
         memset(mem, 'A', chunk_bytes);
         count++;
-
         printf("allocation=%d chunk=%zuMB total=%zuMB\n",
                count, chunk_mb, (size_t)count * chunk_mb);
         fflush(stdout);
-
         usleep(sleep_us);
-    }	
-      
+    }
+
     return 0;
 }
