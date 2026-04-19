@@ -366,7 +366,8 @@ top -d 1 -n 8
 
 ### Screenshot Evidence
 
-![Scheduling Experiment](https://github.com/user-attachments/assets/6fee5325-a18f-41da-9284-6aa6440e57b9)
+<img width="1342" height="1042" alt="Screenshot 2026-04-19 150545" src="https://github.com/user-attachments/assets/521df05b-8aaa-493a-92ca-7afbbde2a7f2" />
+
 
 ### Raw Measurements
 
