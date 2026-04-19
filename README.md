@@ -90,7 +90,8 @@ sudo ./engine start beta ./rootfs-beta /cpu_hog --nice 10
 
 sudo ./engine ps
 ```
-<img width="2559" height="773" alt="Screenshot 2026-04-19 103211" src="https://github.com/user-attachments/assets/4580e338-d235-4c7f-b1e7-ade81f78cae3" />
+<img width="307" height="71" alt="Screenshot 2026-04-19 151106" src="https://github.com/user-attachments/assets/dc5fdb8b-3983-4081-ab2a-99823d1fa008" />
+
 
 ### 2)Metadata tracking 
 ```
