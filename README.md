@@ -139,9 +139,9 @@ sudo dmesg | tail -3
 <img width="1354" height="269" alt="image" src="https://github.com/user-attachments/assets/2b8b9020-3dfb-4364-8b74-046ee6fb91fb" />
 
 ## Design and Implementation Overview
-```
+
 The system is designed using Linux namespaces such as PID, UTS, and Mount to provide process, hostname, and filesystem isolation, while each container is further isolated using chroot to give it an independent root filesystem. A central supervisor manages all containers by handling their lifecycle operations such as start, stop, and cleanup of processes to prevent zombie states. Communication between the CLI and supervisor is implemented using UNIX domain sockets, while logging is handled through pipes and stored in separate log files for each container. Memory management is enforced through soft and hard limits, where the soft limit triggers warnings and the hard limit results in process termination, with monitoring performed via a kernel module. CPU scheduling is demonstrated using Linux nice values, where lower nice values receive higher CPU priority and higher nice values receive reduced CPU access. The design choices prioritize simplicity and clarity, using chroot for lightweight filesystem isolation, a single supervisor for centralized control, pipes for efficient logging, UNIX sockets for fast inter-process communication, and nice values to demonstrate basic scheduling behavior. In experiments, a container with nice value 0 received nearly 100% CPU usage, while a container with nice value 10 received significantly less CPU time (around 60%), showing that lower nice values result in higher CPU allocation.
-```
+
 
 
 
