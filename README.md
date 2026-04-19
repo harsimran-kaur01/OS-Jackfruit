@@ -128,7 +128,7 @@ sudo ./engine p
 sudo ./engine start alpha ./rootfs-alpha /cpu_hog --nice 0
 sudo ./engine start beta ./rootfs-beta /cpu_hog --nice 10 top -d 1 -n 8
 ```
-<img width="1323" height="1023" alt="Screenshot 2026-04-19 114540" src="https://github.com/user-attachments/assets/6fee5325-a18f-41da-9284-6aa6440e57b9" />
+<img width="1342" height="1042" alt="Screenshot 2026-04-19 150545" src="https://github.com/user-attachments/assets/c1a8960f-3e7f-4213-951a-d761e213299b" />
 
 ### 8) Clean teardown 
 ```
