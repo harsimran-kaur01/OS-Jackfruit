@@ -90,7 +90,8 @@ sudo ./engine start beta ./rootfs-beta /cpu_hog --nice 10
 
 sudo ./engine ps
 ```
-<img width="307" height="71" alt="Screenshot 2026-04-19 151106" src="https://github.com/user-attachments/assets/17a7cbc8-84f6-41d0-8b93-c158923c3151" />
+<img width="1277" height="409" alt="Screenshot 2026-04-19 170856" src="https://github.com/user-attachments/assets/ee4210c9-a181-4fbc-a764-0033cac73fc9" />
+
 
 
 
