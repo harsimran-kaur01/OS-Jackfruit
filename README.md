@@ -1,145 +1,187 @@
-## Multi-Container Runtime — OS-Jackfruit
+## OS-JACK-FRUIT
+A lightweight Linux container runtime written in C, featuring a long-running supervisor and a kernel-space memory monitor. This project demonstrates core operating system concepts such as namespaces, process isolation, scheduling, IPC, and kernel-level enforcement.
+
+## Features
 ```
-Team Information
-Name	            SRN
-Harsimran Kaur   PES1UG24CS187
-Gitanjali A	     PES1UG24CS170
+Namespace-based container isolation
+Kernel-space memory monitoring
+Supervisor for lifecycle management
+IPC using pipes and UNIX sockets
+Multithreaded logging system
+Scheduling experiments using Linux CFS
 ```
-## Build, Load, and Run Instructions
-### Prerequisites
+
+## Team Information
 ```
+Name	        SRN
+Harsimran Kaur	PES1UG24CS187
+Gitanjali A     PES1UG24CS170
+Prerequisites
+Ubuntu 22.04 / 24.04 (VM or bare metal)
+Secure Boot OFF (required for kernel module)
+Linux kernel headers installed
 sudo apt update
 sudo apt install -y build-essential linux-headers-$(uname -r)
-```
-### Build
-```
+Setup Instructions
+git clone https://github.com/<your-username>/OS-Jackfruit.git
+cd OS-Jackfruit
+
+# Extract root filesystems
+sudo tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-base
+sudo tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-alpha
+sudo tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-beta
+Build
 cd boilerplate
-make ci
+sudo make
 
-# Prepare Root Filesystems
-mkdir -p rootfs-base
-
-wget https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/x86_64/alpine-minirootfs-3.20.3-x86_64.tar.gz
-
-tar -xzf alpine-minirootfs-3.20.3-x86_64.tar.gz -C rootfs-base
-
-cp -a rootfs-base rootfs-alpha
-cp -a rootfs-base rootfs-beta
-```
-## Copy workload binaries
-```
-cp cpu_hog memory_hog io_pulse rootfs-alpha/
-cp cpu_hog memory_hog io_pulse rootfs-beta/
-```
-## Load Kernel Module
-```
+# Copy workloads into containers
+cp cpu_hog memory_hog io_pulse ../rootfs-alpha/
+cp cpu_hog memory_hog io_pulse ../rootfs-beta/
+Load Kernel Module
 sudo insmod monitor.ko
-
-# verify device
 ls -l /dev/container_monitor
+dmesg | tail
+Ensure:
 
-# verify load
-sudo dmesg | tail -3
-```
-## Start Supervisor (Terminal 1)
-```
-sudo ./engine supervisor ./rootfs-base
-```
-## Use CLI (Terminal 2)
-```
-sudo ./engine start alpha ./rootfs-alpha /cpu_hog --soft-mib 48 --hard-mib 80
-sudo ./engine ps
-sudo ./engine logs alpha
-```
-## Start containers
-```
-sudo ./engine start alpha ./rootfs-alpha /cpu_hog --soft-mib 48 --hard-mib 80
+Device /dev/container_monitor exists
+"Module loaded" appears in logs
+Running the System
+Terminal 1 — Start Supervisor
+sudo ./engine supervisor ../rootfs-base
+Terminal 2 — Manage Containers
+# Start containers
+sudo ./engine start alpha /path/to/rootfs-alpha /bin/sleep 100
+sudo ./engine start beta /path/to/rootfs-beta /bin/sleep 100
 
-sudo ./engine start beta ./rootfs-beta /cpu_hog --soft-mib 64 --hard-mib 96
-```
-## Run container (foreground
-```
-sudo ./engine run alpha ./rootfs-alpha /memory_hog --soft-mib 20 --hard-mib 64
-```
-## List containers
-```
+# View status
 sudo ./engine ps
-```
-## View logs
-```
+
+# View logs
 sudo ./engine logs alpha
-```
-## Stop container
-```
+
+# Stop container
 sudo ./engine stop alpha
-```
-## Remove Kernel Module + Check Logs + Clean
-```
+Run in Foreground Mode
+sudo ./engine run test /path/to/rootfs-alpha /bin/ls
+Cleanup
+sudo ./engine stop alpha
+sudo ./engine stop beta
+
+# Stop supervisor
+Ctrl + C
+
 sudo rmmod monitor
+dmesg | tail
+Ensure:
 
-sudo dmesg | tail -5
+"Module unloaded" appears
+Demo Screenshots
+Place all images inside a folder named screenshots/.
 
-make clean
-```
-## Demo Screenshots
-### 1)Multi-container supervision
-```
-sudo ./engine start alpha ./rootfs-alpha /cpu_hog --nice 0
+Feature	Screenshot
+Multi-container supervision	
+Metadata tracking	
+Bounded-buffer logging	
+CLI and IPC	
+Soft-limit warning	
 
-sudo ./engine start beta ./rootfs-beta /cpu_hog --nice 10
+Hard-limit enforcement	
+Scheduling experiment	
+Clean teardown	
 
-sudo ./engine ps
-```
-<img width="1277" height="409" alt="Screenshot 2026-04-19 170856" src="https://github.com/user-attachments/assets/ee4210c9-a181-4fbc-a764-0033cac73fc9" />
+Engineering Analysis
+Isolation Mechanisms
+Uses clone() with:
+
+CLONE_NEWPID
+CLONE_NEWUTS
+CLONE_NEWNS
+chroot() restricts filesystem
+
+/proc mounted inside container
+
+Host kernel is shared across containers
+
+Supervisor & Process Lifecycle
+Prevents zombie processes using:
+
+waitpid(-1, WNOHANG)
+Tracks containers using linked list:
+
+Container ID
+PID
+State
+Memory limits
+IPC, Threads & Synchronization
+Pipe per container captures stdout/stderr
+UNIX domain socket handles CLI communication
+Bounded buffer design:
+
+Mutex for mutual exclusion
+
+Condition variables:
+
+not_full
+not_empty
+Memory Management
+Uses RSS (Resident Set Size)
+Soft limit → warning (logged once)
+Hard limit → process killed (SIGKILL)
+Implemented in kernel space using a timer for reliable enforcement
+
+Scheduling (Linux CFS)
+Experiment 1 — CPU-bound Tasks
+Container	Nice	Completion Time
+High	-5	~9.120 sec
+Low	+10	~9.416 sec
+Higher priority results in more CPU share
+
+Experiment 2 — CPU vs I/O
+I/O-bound process yields CPU frequently
+Gets priority boost on wakeup
+Maintains responsiveness
+Design Decisions & Tradeoffs
+Component	Decision	Tradeoff	Reason
+Namespace isolation	No network namespace	Limited isolation	Simpler design
+Supervisor	Single-threaded loop	Serialized requests	Easier implementation
+IPC	Pipe + UNIX socket	Extra threads	Separation of concerns
+Kernel monitor	Mutex	No IRQ usage	Runs in process context
+Scheduling	nice values	Only visible under load	Demonstrates CFS
+Key Highlights
+Built entirely in C
+Demonstrates real OS concepts
+Kernel and user-space integration
+Efficient logging and IPC system
+Practical scheduling experiments
+Notes
+Run all commands with sudo
+Ensure Secure Boot is disabled
+Verify correct rootfs paths
+Kernel module must be loaded before running containers
+Project Structure
+OS-Jackfruit/
+│── boilerplate/
+│── rootfs-base/
+│── rootfs-alpha/
+│── rootfs-beta/
+│── screenshots/
+│── engine
+│── monitor.ko
+How to Add Screenshots
+Create folder:
+mkdir screenshots
+Add images:
+os_1.png
+os_2.png
+...
+Commit:
+git add .
+git commit -m "Added screenshots"
+git push
+Conclusion
+OS-JACK-FRUIT is a compact demonstration of how container runtimes work internally. It integrates Linux namespaces, kernel monitoring, scheduling, and IPC into a cohesive system, making it a strong educational and experimental platform for operating systems.
 
 
-
-
-### 2)Metadata tracking 
-```
-sudo ./engine ps
-```
-<img width="1104" height="131" alt="Screenshot 2026-04-19 113049" src="https://github.com/user-attachments/assets/712f85e4-1cb1-446c-b72f-d7169ab952a2" />
-
-
-### 3)Logging system 
-```
-sudo ./engine start alpha ./rootfs-alpha /cpu_hog sleep 3
-sudo ./engine logs alpha
-```
-<img width="1518" height="755" alt="Screenshot 2026-04-19 112558" src="https://github.com/user-attachments/assets/f34d051a-f361-4eed-afdf-44c275e0aec0" />
-
-### 4) CLI and IPC 
-```
-sudo ./engine start alpha ./rootfs-alpha /cpu_hog --soft-mib 48 --hard-mib 80 sudo ./engine stop alpha sudo ./engine ps
-```
-<img width="1434" height="228" alt="image" src="https://github.com/user-attachments/assets/3b01f1ab-1312-4078-ac2b-33002ebe7fce" />
-###  5)Soft-limit warning
-```
-sudo ./engine run alpha ./rootfs-alpha /memory_hog --soft-mib 20 --hard-mib 64 sudo dmesg | grep "SOFT LIMIT"
-```
-<img width="1503" height="315" alt="image" src="https://github.com/user-attachments/assets/925fa626-0a5f-4289-8550-c0b230979405" />
-### 6) Hard-limit enforcement
-```
-sudo ./engine run alpha ./rootfs-alpha /memory_hog --soft-mib 10 --hard-mib 20 sudo dmesg | grep container_monitor | tail -5
-sudo ./engine p
-```
-<img width="1492" height="682" alt="Screenshot 2026-04-19 114124" src="https://github.com/user-attachments/assets/09b43604-e315-427f-972e-135d4a7f7547" />
-
-### 7) Scheduling experiment 
-```
-sudo ./engine start alpha ./rootfs-alpha /cpu_hog --nice 0
-sudo ./engine start beta ./rootfs-beta /cpu_hog --nice 10 top -d 1 -n 8
-```
-<img width="1342" height="1042" alt="Screenshot 2026-04-19 150545" src="https://github.com/user-attachments/assets/c1a8960f-3e7f-4213-951a-d761e213299b" />
-
-### 8) Clean teardown 
-```
-ps aux | grep defunct
-sudo rmmod monitor
-sudo dmesg | tail -3
-```
-<img width="1354" height="269" alt="image" src="https://github.com/user-attachments/assets/2b8b9020-3dfb-4364-8b74-046ee6fb91fb" />
 
 ## Design and Implementation Overview
 
