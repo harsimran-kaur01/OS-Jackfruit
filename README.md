@@ -75,15 +75,25 @@ dmesg | tail
 Ensure:
 
 "Module unloaded" appears
-Demo Screenshots
-Place all images inside a folder named screenshots/.
+```
+## Demo Screenshots
+1) Multi-container supervision
+   <img width="1760" height="446" alt="Screenshot 2026-04-20 123719" src="https://github.com/user-attachments/assets/5e93c548-cb09-44ff-b577-e9b37b47eee0" />
+2) Metadata tracking
+   <img width="1039" height="128" alt="Screenshot 2026-04-20 124404" src="https://github.com/user-attachments/assets/1b48a9c9-ced9-48d8-b753-4529cc2dde6d" />
+3) Bounded-buffer logging
+   <img width="1418" height="151" alt="Screenshot 2026-04-20 124604" src="https://github.com/user-attachments/assets/0ec908f3-3947-4bb1-b180-6a624dc20c4e" />
+4) CLI and IPC
+   <img width="1157" height="72" alt="Screenshot 2026-04-20 125244" src="https://github.com/user-attachments/assets/8090bbd2-e930-4f7b-a360-88ce4b60f640" />
+5) Soft-limit warning
+   <img width="1296" height="857" alt="Screenshot 2026-04-20 125454" src="https://github.com/user-attachments/assets/2467b805-c86a-4cbe-a114-ebd6e39d779c" />
+6) Hard-limit enforcement
+   <img width="1303" height="851" alt="Screenshot 2026-04-20 130023" src="https://github.com/user-attachments/assets/f04c5665-bc55-4444-99f1-1af090d25d44" />
+7) Scheduling experiment
+   <img width="1342" height="238" alt="Screenshot 2026-04-20 130529" src="https://github.com/user-attachments/assets/c4b4c2f1-46fb-4907-9341-bb271dc332a6" />
+8) Clean teardown
+   <img width="2310" height="768" alt="Screenshot 2026-04-20 131146" src="https://github.com/user-attachments/assets/74639e5a-a934-4b17-ae18-b9783e44e449" />
 
-Feature	Screenshot
-Multi-container supervision	
-Metadata tracking	
-Bounded-buffer logging	
-CLI and IPC	
-Soft-limit warning	
 
 Hard-limit enforcement	
 Scheduling experiment	
